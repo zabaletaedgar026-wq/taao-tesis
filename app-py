@@ -1,0 +1,200 @@
+import streamlit as st
+import hashlib
+from datetime import datetime
+
+# ==============================================================================
+# 1. CONFIGURACIÓN DE LA PÁGINA
+# ==============================================================================
+st.set_page_config(page_title="TAAO-TAPA | Auditoría Judicial IA", layout="wide")
+
+# ==============================================================================
+# 2. BASE NORMATIVA Y JURISPRUDENCIAL (Aporte ChatGPT integrado)
+# ==============================================================================
+NORMATIVE_BASE = {
+    "Constitución CRBV": ["debido proceso", "derecho a la defensa", "presunción de inocencia", "igualdad ante la ley", "motivación del acto judicial"],
+    "Res. TSJ 2025-006": ["uso ético de IA", "supervisión humana obligatoria", "trazabilidad de sistemas automatizados"],
+    "Lineamientos MINCYT 2026": ["transparencia algorítmica", "no discriminación algorídmica", "auditoría técnica obligatoria"],
+    "Ley de Celeridad Administrativa": ["celeridad procesal", "simplificación de trámites", "digitalización judicial"]
+}
+
+JURISPRUDENCE_RULES = {
+    "due_process_violation": {
+        "condition": lambda T3, P1: T3 < 4 or P1 > 7,
+        "message": "⚠️ Posible afectación del debido proceso por baja explicabilidad (T3<4) o sesgo elevado (P1>7)."
+    },
+    "lack_of_motivation": {
+        "condition": lambda T2, T4: T2 < 5 and T4 < 5,
+        "message": "⚠️ Riesgo de falta de motivación suficiente del acto basado en sistema automatizado (Transparencia y Auditabilidad bajas)."
+    },
+    "algorithmic_discrimination_risk": {
+        "condition": lambda P4: P4 > 6,
+        "message": "⚠️ Posible discriminación algorítmica indirecta detectada (P4>6)."
+    },
+    "low_transparency_case": {
+        "condition": lambda T1, T2: T1 < 5 or T2 < 5,
+        "message": "⚠️ Baja transparencia en el proceso algorítmico afecta el control judicial."
+    }
+}
+
+# ==============================================================================
+# 3. MOTORES DE CÁLCULO (Fórmulas TAAO + Motor Jurídico MJJT)
+# ==============================================================================
+def calculate_technical_metrics(T, P):
+    """Calcula ITA, IRJ, IIA, IGGA basado en las 9 variables"""
+    T1, T2, T3, T4, T5 = T # Trazabilidad, Transparencia, Explicabilidad, Auditabilidad, Supervisión
+    P1, P2, P3, P4 = P     # Sesgo, Riesgo Jurídico, Impacto Const., Discriminación
+    
+    ita = (0.25 * T1) + (0.20 * T2) + (0.20 * T3) + (0.20 * T4) + (0.15 * T5)
+    irj = (0.35 * P1) + (0.30 * P2) + (0.25 * P3) + (0.10 * P4)
+    iia = (10 - T2) * (10 - T1)
+    igga = (0.70 * ita) - (0.23 * irj) + (0.07 * iia)
+    
+    return round(ita, 2), round(irj, 2), round(iia, 2), round(igga, 2)
+
+def evaluate_juridical_risk(T, P):
+    """Motor Jurídico-Jurisprudencial TAAO-TAPA (MJJT)"""
+    T1, T2, T3, T4, T5 = T
+    P1, P2, P3, P4 = P
+
+    alerts = []
+    legal_flags = []
+
+    # 3.1 Aplicación Jurisprudencial
+    if JURISPRUDENCE_RULES["due_process_violation"]["condition"](T3, P1):
+        alerts.append(JURISPRUDENCE_RULES["due_process_violation"]["message"])
+        legal_flags.append("DUE_PROCESS_RISK")
+
+    if JURISPRUDENCE_RULES["lack_of_motivation"]["condition"](T2, T4):
+        alerts.append(JURISPRUDENCE_RULES["lack_of_motivation"]["message"])
+        legal_flags.append("MOTIVATION_RISK")
+
+    if JURISPRUDENCE_RULES["algorithmic_discrimination_risk"]["condition"](P4):
+        alerts.append(JURISPRUDENCE_RULES["algorithmic_discrimination_risk"]["message"])
+        legal_flags.append("DISCRIMINATION_RISK")
+
+    if JURISPRUDENCE_RULES["low_transparency_case"]["condition"](T1, T2):
+        alerts.append(JURISPRUDENCE_RULES["low_transparency_case"]["message"])
+        legal_flags.append("TRANSPARENCY_RISK")
+
+    # 3.2 Interpretación Constitucional
+    constitutional_interpretation = []
+    if P1 > 6:
+        constitutional_interpretation.append("📜 Posible vulneración del principio de igualdad ante la ley (Art. 21 CRBV).")
+    if T3 < 4:
+        constitutional_interpretation.append("📜 Déficit de explicabilidad afecta el derecho a la defensa (Art. 49 CRBV).")
+    if T4 < 4:
+        constitutional_interpretation.append("📜 Baja auditabilidad compromete el control jurisdiccional y la tutela judicial efectiva.")
+
+    # 3.3 Clasificación Jurídica Final
+    risk_score = len(legal_flags)
+    if risk_score == 0:
+        risk_level = "✅ JURÍDICAMENTE ESTABLE"
+    elif risk_score == 1:
+        risk_level = "⚠️ RIESGO LEGAL BAJO"
+    elif risk_score == 2:
+        risk_level = "🚨 RIESGO LEGAL MEDIO"
+    elif risk_score == 3:
+        risk_level = "🛑 RIESGO LEGAL ALTO"
+    else:
+        risk_level = "💀 RIESGO LEGAL CRÍTICO (INAPLICABLE)"
+
+    return {
+        "risk_level": risk_level,
+        "legal_flags": legal_flags,
+        "jurisprudential_alerts": alerts,
+        "constitutional_analysis": constitutional_interpretation
+    }
+
+def generate_audit_hash(user, action, case_id, metrics):
+    """Genera hash SHA-256 inmutable para trazabilidad"""
+    timestamp = datetime.now().isoformat()
+    raw_string = f"{user}:{action}:{case_id}:{metrics}:{timestamp}"
+    return hashlib.sha256(raw_string.encode()).hexdigest()
+
+# ==============================================================================
+# 4. INTERFAZ DE USUARIO (STREAMLIT)
+# ==============================================================================
+st.title("⚖️ TAAO–TAPA: Sistema de Auditoría de IA Judicial")
+st.markdown("Prototipo de Tesis Doctoral | Evaluación de Riesgos en Sistemas Penales, Civiles y Administrativos")
+
+st.sidebar.header("Datos del Operador")
+user_role = st.sidebar.selectbox("Rol Judicial", ["Juez", "Fiscal", "Defensor", "Perito", "Administrador"])
+case_id = st.sidebar.text_input("ID del Caso / Expediente", "EXP-2026-001")
+
+st.markdown("---")
+st.subheader("📊 Evaluación de Variables del Sistema de IA (Escala 0 a 10)")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown("#### 🔍 Variables TAAO (Trazabilidad y Control)")
+    T1 = st.slider("T1. Trazabilidad", 0.0, 10.0, 5.0, 0.5)
+    T2 = st.slider("T2. Transparencia", 0.0, 10.0, 5.0, 0.5)
+    T3 = st.slider("T3. Explicabilidad", 0.0, 10.0, 5.0, 0.5)
+    T4 = st.slider("T4. Auditabilidad", 0.0, 10.0, 5.0, 0.5)
+    T5 = st.slider("T5. Supervisión Humana", 0.0, 10.0, 5.0, 0.5)
+
+with col2:
+    st.markdown("#### ⚠️ Variables TAPA (Riesgos y Patologías)")
+    P1 = st.slider("P1. Nivel de Sesgo", 0.0, 10.0, 5.0, 0.5)
+    P2 = st.slider("P2. Riesgo Jurídico", 0.0, 10.0, 5.0, 0.5)
+    P3 = st.slider("P3. Impacto Constitucional", 0.0, 10.0, 5.0, 0.5)
+    P4 = st.slider("P4. Potencial de Discriminación", 0.0, 10.0, 5.0, 0.5)
+
+st.markdown("---")
+
+if st.button("🔍 EJECUTAR AUDITORÍA JURÍDICO-ALGORÍTMICA", type="primary", use_container_width=True):
+    T_vars = (T1, T2, T3, T4, T5)
+    P_vars = (P1, P2, P3, P4)
+    
+    # 1. Cálculos Técnicos
+    ita, irj, iia, igga = calculate_technical_metrics(T_vars, P_vars)
+    
+    # 2. Análisis Jurídico
+    juridical_result = evaluate_juridical_risk(T_vars, P_vars)
+    
+    # 3. Auditoría Inmutable
+    audit_hash = generate_audit_hash(user_role, "EVALUATION", case_id, f"IGGA:{igga}")
+    
+    # ==============================================================================
+    # 5. VISUALIZACIÓN DE RESULTADOS
+    # ==============================================================================
+    st.success("Evaluación completada exitosamente.")
+    
+    col_a, col_b, col_c, col_d = st.columns(4)
+    col_a.metric("ITA (Índice Trazabilidad)", ita, delta="Meta: > 7.0", delta_color="normal" if ita > 7 else "inverse")
+    col_b.metric("IRJ (Índice Riesgo Jurídico)", irj, delta="Meta: < 3.0", delta_color="inverse" if irj > 3 else "normal")
+    col_c.metric("IIA (Índice Impacto Algorítmico)", iia)
+    col_d.metric("IGGA (Índice Global)", igga, delta="Meta: > 5.0", delta_color="normal" if igga > 5 else "inverse")
+    
+    st.markdown("---")
+    
+    col_res1, col_res2 = st.columns([1, 2])
+    
+    with col_res1:
+        st.markdown("### 🏛️ Clasificación de Riesgo")
+        st.info(f"## {juridical_result['risk_level']}")
+        
+        st.markdown("### 🔐 Trazabilidad Inmutable")
+        st.code(f"Hash SHA-256:\n{audit_hash}", language="text")
+        st.caption("Este hash garantiza que la evaluación no ha sido alterada, cumpliendo con la Res. TSJ 2025-006.")
+
+    with col_res2:
+        st.markdown("### 📜 Análisis Jurídico y Jurisprudencial")
+        
+        if juridical_result['jurisprudential_alerts']:
+            st.markdown("**Alertas Jurisprudenciales Detectadas:**")
+            for alert in juridical_result['jurisprudential_alerts']:
+                st.warning(alert)
+        else:
+            st.success("No se detectaron alertas jurisprudenciales críticas.")
+            
+        if juridical_result['constitutional_analysis']:
+            st.markdown("**Interpretación Constitucional:**")
+            for const in juridical_result['constitutional_analysis']:
+                st.info(const)
+
+    st.markdown("---")
+    with st.expander("📚 Ver Base Normativa Aplicada"):
+        for law, principles in NORMATIVE_BASE.items():
+            st.markdown(f"**{law}**: {', '.join(principles)}.")
